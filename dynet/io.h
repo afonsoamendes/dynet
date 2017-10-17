@@ -140,25 +140,54 @@ class Loader {
 }; // class Loader
 
 
-class TextFileSaver : public Saver {
+class StreamSaver : public Saver {
+ public:
+  StreamSaver(std::ostream* os = nullptr);
+  ~StreamSaver() override;
+  virtual void save(const ParameterCollection & model,
+            const std::string & key = "") override;
+  virtual void save(const Parameter & param, const std::string & key = "") override;
+  virtual void save(const LookupParameter & param, const std::string & key = "") override;
+  virtual void set_stream(std::ostream * os);
+
+ protected:
+  virtual void save(const ParameterStorage & param, const std::string & key = "");
+  virtual void save(const LookupParameterStorage & param, const std::string & key = "");
+
+ private:
+  void init();
+  std::ostream* datastream;
+
+}; // class StreamSaver
+
+class StreamLoader : public Loader {
+ public:
+  StreamLoader(std::istream * is = nullptr);
+  ~StreamLoader() override;
+  virtual void populate(ParameterCollection & model, const std::string & key = "") override;
+  virtual void populate(Parameter & param, const std::string & key = "") override;
+  virtual void populate(LookupParameter & lookup_param,
+                        const std::string & key = "") override;
+  virtual Parameter load_param(ParameterCollection & model, const std::string & key) override;
+  virtual LookupParameter load_lookup_param(ParameterCollection & model, const std::string & key) override;
+  virtual void set_stream(std::istream * is);
+
+ private:
+  //virtual void runtime_err();
+  std::istream * datastream;
+}; // class StreamLoader
+
+class TextFileSaver : public StreamSaver {
  public:
   TextFileSaver(const std::string & filename, bool append = false);
   ~TextFileSaver() override;
-  void save(const ParameterCollection & model,
-            const std::string & key = "") override;
-  void save(const Parameter & param, const std::string & key = "") override;
-  void save(const LookupParameter & param, const std::string & key = "") override;
 
 protected:
-  void save(const ParameterStorage & param, const std::string & key = "");
-  void save(const LookupParameterStorage & param, const std::string & key = "");
-
   std::unique_ptr<std::ostream> p_datastream;
-  std::ostream& datastream;
 
 }; // class TextFileSaver
 
-class TextFileLoader : public Loader {
+class TextFileLoader : public StreamLoader {
  public:
   TextFileLoader(const std::string & filename);
   ~TextFileLoader() override;
@@ -170,6 +199,7 @@ class TextFileLoader : public Loader {
   LookupParameter load_lookup_param(ParameterCollection & model, const std::string & key) override;
 
  private:
+  //void runtime_err() override;
   std::string dataname;
 }; // class TextFileLoader
 
