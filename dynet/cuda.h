@@ -17,6 +17,10 @@
 
 #define MAX_GPUS 256
 
+#define cudaSetDevice(_dev) _cudaSetDevice(_dev) 
+#define cudaFree(_mem_) _cudaFree(_mem_)
+#define cudaMalloc(_devPtr, _size) _cudaMalloc(_devPtr, _size)
+
 #define CUDA_CHECK(stmt) do {                              \
     cudaError_t err = stmt;                                \
     if (err != cudaSuccess) {                              \
@@ -71,6 +75,16 @@
     }                                                      \
   } while(0)
 #endif
+
+
+
+cudaError_t _cudaMalloc(void** devPtr,
+  size_t 	size
+);
+
+cudaError_t _cudaFree(void* devPtr);
+
+cudaError_t _cudaSetDevice(int device);
 
 namespace dynet {
 

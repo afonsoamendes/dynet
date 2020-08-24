@@ -477,7 +477,7 @@ void BatchedExecutionEngine::garbage_collect() {
     dev->pools[(int)DeviceMempool::FXS]->free();
   batches.clear();
 }
-
+vector<int> depthprofcnt(100000 * 3);
 const Tensor& BatchedExecutionEngine::incremental_forward_no_update(
     VariableIndex upto, int autobatch_strategy) {
   // cerr << "running graph" << endl; cg.print_graphviz();
@@ -503,6 +503,8 @@ const Tensor& BatchedExecutionEngine::incremental_forward_no_update(
     size_t temp_data_size = (uptop1) * 4 * sizeof(int) +
         (uptop1psig) * 2 * sizeof(float);
     int* node2profid = (int*)malloc(temp_data_size); // mixed types, so no new[]
+    if (node2profid == NULL)
+      throw std::invalid_argument("batched");
     memset(node2profid, 0, temp_data_size);
     // node2left[n] = how many arguments must still be evaluated for Node n
     // before it can be evaluated?
@@ -517,7 +519,8 @@ const Tensor& BatchedExecutionEngine::incremental_forward_no_update(
     // More intelligent batching?
     if (autobatch_strategy == 1 || autobatch_strategy == 3) {
       // Count of remaining things for this profile
-      unordered_map<int, int> depthprofcnt(upto * 3);
+      depthprofcnt.resize(upto * 3);
+      fill(depthprofcnt.begin(), depthprofcnt.end(), 0);
       // Node to successors
       vector<VariableIndex> node2successors(uptop1, (VariableIndex)0);
       vector<VariableIndex> active_batched(uptop1 * 2, (VariableIndex)0);
@@ -1071,6 +1074,7 @@ void BatchedExecutionEngine::backward(VariableIndex from_where, bool full) {
               break;
           if (nd) {
             // Non-contiguous
+
             Tensor my_ndEdf = *xs[ai];
             if (my_batch.concat[ai] == 1) {
               size_t used = node->device->pools[(int)DeviceMempool::DEDFS]->used();

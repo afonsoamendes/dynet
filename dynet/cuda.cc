@@ -1,15 +1,102 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
-
+#include <unordered_set>
+#include <stack>
 #include "dynet/dynet.h"
 #include "dynet/cuda.h"
 #include "dynet/init.h"
 #include "dynet/globals.h"
 #include "dynet/devices.h"
 
-using namespace std;
+#undef cudaMalloc
+#undef cudaFree
+#undef cudaSetDevice
 
+typedef struct cudaMemSt
+{
+  size_t size;
+  void* ptr;
+  bool free;
+} cudaMemSt;
+std::unordered_map<void*, cudaMemSt> m_allocated_mem;
+std::unordered_map<int, std::stack<cudaMemSt *>> m_free_allocated_mem;
+cudaError_t _cudaSetDevice(int device)
+{
+  static int dev = -1;
+  if (dev != device)
+  {
+    dev = device;
+    return cudaSetDevice(device);
+    
+  }
+  return cudaSuccess;
+}
+using namespace std;
+cudaError_t _cudaMalloc(void** devPtr,
+  size_t 	size
+)
+{
+  //return cudaMalloc(devPtr, size);
+  bool do_alloc = true;
+  if (m_free_allocated_mem.find(size) != m_free_allocated_mem.end())
+  {
+    if (!m_free_allocated_mem[size].empty())
+    {
+      cudaMemSt* m =  m_free_allocated_mem[size].top();
+      m_free_allocated_mem[size].pop();
+      m->free = false;
+      *devPtr = m->ptr;
+      return cudaSuccess;
+    }
+    else
+    {
+      do_alloc = true;
+    }
+  }
+  if (do_alloc)
+  {
+    cudaError_t er;
+    if ((er = cudaMalloc(devPtr, size)) != cudaSuccess)
+    {
+      if (m_allocated_mem.size() == 0)
+        return er;
+      for (auto& m : m_allocated_mem)
+      {
+        if (m.second.free)
+        {
+          cudaFree(m.first);
+        }
+      }
+      m_allocated_mem.clear();
+      m_free_allocated_mem.clear();
+      return _cudaMalloc(devPtr, size);
+    }
+    else
+    {
+      cudaMemSt st;
+      st.free = false;
+      st.ptr = *devPtr;
+      st.size = size;
+      m_allocated_mem.insert(std::pair<void*, cudaMemSt>(*devPtr, st));
+    }
+  }
+
+  return cudaSuccess;
+}
+
+cudaError_t _cudaFree(void* devPtr)
+{
+  //return cudaFree(devPtr);
+  if (m_allocated_mem.find(devPtr) != m_allocated_mem.end())
+  {
+    cudaMemSt* st = &m_allocated_mem[devPtr];
+    st->free = true;
+    m_free_allocated_mem[st->size].push(st);
+    return cudaSuccess;
+  }
+  return cudaFree(devPtr);
+}
 namespace dynet {
 
 vector<Device*> initialize_gpu(DynetParams& params) {

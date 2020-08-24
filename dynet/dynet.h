@@ -12,7 +12,11 @@
 #include <string>
 #include <utility>
 #include <vector>
-
+#if HAVE_CUDA
+#include <cuda.h>
+#include <cuda_runtime.h>
+#include "dynet/cuda.h"
+#endif
 #include "dynet/aligned-mem-pool.h"
 #include "dynet/init.h"
 #include "dynet/model.h"

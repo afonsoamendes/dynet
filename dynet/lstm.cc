@@ -534,13 +534,18 @@ Expression VanillaLSTMBuilder::add_input_impl(int prev, const Expression& x) {
     Expression i_ft = tmp;
     Expression i_ot = logistic(i_aot);
     Expression i_gt = tanh(i_agt);
-
+    Expression iin;
     ct[i] = has_prev_state ? (cmult(i_ft, i_c_tm1) + cmult(i_it, i_gt)) :  cmult(i_it, i_gt);
     if (ln_lstm) {
       const vector<Expression>& ln_vars = ln_param_vars[i];
-      in = ht[i] = cmult(i_ot, tanh(layer_norm(ct[i], ln_vars[LN_GC], ln_vars[LN_BC])));
+      iin = ht[i] = cmult(i_ot, tanh(layer_norm(ct[i], ln_vars[LN_GC], ln_vars[LN_BC])));
     } else
-      in = ht[i] = cmult(i_ot, tanh(ct[i]));
+      iin = ht[i] = cmult(i_ot, tanh(ct[i]));
+    if (i > 0)
+      in = i + iin;
+    else
+      in = iin;
+    
   }
   return ht.back();
 }

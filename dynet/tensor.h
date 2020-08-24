@@ -11,7 +11,11 @@
 #include <vector>
 #include <sstream>
 #include <stdexcept>
-
+#if HAVE_CUDA
+#include <cuda.h>
+#include <cuda_runtime.h>
+#include "dynet/cuda.h"
+#endif
 #include "dynet/dim.h"
 #include "dynet/except.h"
 #include "dynet/aligned-mem-pool.h"
